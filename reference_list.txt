@@ -1,0 +1,7 @@
+Merkel, D., 2014. Docker: lightweight linux containers for consistent development and deployment. Linux journal, 2014(239), p.2.
+Seo, K.T., Hwang, H.S., Moon, I.Y., Kwon, O.Y. and Kim, B.J., 2014. Performance comparison analysis of linux container and virtual machine for building cloud. Advanced Science and Technology Letters, 66(105-111), p.2.
+Fink, J., 2014. Docker: a software as a service, operating system-level virtualization framework. Code4Lib Journal, (25).
+Bui, T., 2015. Analysis of docker security. arXiv preprint arXiv:1501.02967.
+Xu, X., Xu, A., Jiang, Y., Wang, Z., Wang, Q., Zhang, Y. and Wen, H., 2020, November. Research on Security Issues of Docker and Container Monitoring System in Edge Computing System. In Journal of Physics: Conference Series (Vol. 1673, No. 1, p. 012067). IOP Publishing.
+Azab, M., Mokhtar, B., Abed, A.S. and Eltoweissy, M., 2016, November. Toward smart moving target defense for linux container resiliency. In 2016 IEEE 41st Conference on Local Computer Networks (LCN) (pp. 619-622). IEEE.
+Bhatia, G., Choudhary, A. and Gupta, V., 2017. THE ROAD TO DOCKER: A SURVEY. International Journal of Advanced Research in Computer Science, 8(8).
