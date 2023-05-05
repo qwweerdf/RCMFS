@@ -20,8 +20,7 @@ def reference_extraction_odt_docx(path):
     html = pypandoc.convert_file(path, 'html5')
     # Parse the HTML content using BeautifulSoup
     soup = BeautifulSoup(html, 'html.parser')
-    # print()
-    # print()
+
     references = []
     is_ref = False
     ref_tag_name = ''
@@ -46,7 +45,6 @@ def reference_extraction_odt_docx(path):
             if ref_tag_name == 'p':
                 if tag.name is not None and tag.name != ref_tag_name:
                     break
-                print(tag.text)
                 references.append(tag.text.replace('\n', ''))
 
             # if the html file is in the list format
@@ -57,8 +55,10 @@ def reference_extraction_odt_docx(path):
                     references.append(tag.find_next_sibling().text.replace('\n', ''))
                 else:
                     references = tag.text.split('\n')[1:-1]
-                    print(references)
                     break
+
+    for ref in references:
+        print(ref)
     return references
 
 
@@ -91,6 +91,8 @@ def reference_extraction_tex(path):
                 # append to current reference
                 current_ref += strip_line
 
+    for ref in ref_content:
+        print(ref)
     return ref_content[1:]
 
 

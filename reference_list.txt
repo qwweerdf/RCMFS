@@ -1,7 +1,2 @@
-[1] Z. Jialong. 2022. Student Application and Admissions Management System. [online] Available at: https://gitlab2.eeecs.qub.ac.uk/40282487/student-application-and-admissions-management-system
-[2] DEV Community. 2022. Spring Boot Architecture. [online] Available at: https://dev.to/maddy/spring-boot-architecture-547i [Accessed 18 April 2022].
-[3] Goswami, H., 2022. Why use a reverse proxy?. [online] Insights - Thought leadership from our community. Available at: https://www.loadbalancer.org/blog/why-should-businesses-use-reverse-proxy/ [Accessed 18 April 2022].
-[4] What is entity relationship diagram (ERD)? [Online]. Available: https://www.visual-paradigm.com/guide/data-modeling/what-is-entity-relationship-diagram/ [Accessed: 19 Apr 2022].
-[5] Editor.md [Online] Available: https://pandao.github.io/editor.md/en.html [Accessed: 21 Apr 2022].
-[6] ECharts [Online] Avaliable: https://echarts.apache.org/en/index.html [Accessed: 21 Apr 2022]
-[7] T. Hamilton, “What is black box testing? techniques, example &amp; types,” Guru99, 26-Feb-2022. [Online]. Available: https://www.guru99.com/black-box-testing.html [Accessed: 22-Apr-2022].
+Donald E. Knuth (1986) The Tex Book, Addison-Wesley Professional.
+Leslie Lamport (1994) LaTeX: a document preparation system, AddisonWesley, Massachusetts, 2nd ed.
