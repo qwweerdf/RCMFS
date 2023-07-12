@@ -27,7 +27,7 @@ def preprocess(ref_str):
     return new_ref_str_list
 
 
-if __name__ == '__main__':
+def get_components():
     # resp = requests.post('http://cermine.ceon.pl/parse.do', data={
     #     'reference': "Ansari, U. B., & Sarode, T. (2017). Skin cancer detection using image processing. Int. Res. J. Eng. Technol, 4(4), 2875-2881."})
     # print(resp.content)
@@ -43,10 +43,10 @@ if __name__ == '__main__':
 
 
     ref_list = []
+    ref_dict = {}
     with open("extracted_references.txt", "r") as file:
         # Read the contents of the file
         for line in file:
-
 
             # Execute a command
             result = subprocess.run(['java', '-cp', '/Users/jialong/Downloads/cermine.jar', 'pl.edu.icm.cermine.bibref.CRFBibReferenceParser', '-reference', line.strip()], capture_output=True, text=True)
@@ -68,7 +68,6 @@ if __name__ == '__main__':
             feats = np.array(list(feature_extraction(data, ner=True)))
             # do transpose
             x = list(map(list, zip(*(feats.tolist()))))
-            ref_dict = {}
             res = model.predict(x)
             for i, item in enumerate(ref):
                 if res[i] == 0:
@@ -90,4 +89,8 @@ if __name__ == '__main__':
             print(ref_dict)
             time.sleep(0.5)
             print(pubmed(ref_dict['title']))
+    return ref_dict
 
+
+if __name__ == '__main__':
+    get_components()

@@ -14,7 +14,7 @@ def extract_features(para):
     return list(map(list, zip(*(feats.tolist()))))
 
 
-if __name__ == '__main__':
+def extract_ref(file_path):
 
     with open('svm_model.pkl', 'rb') as file:
         model = pickle.load(file)
@@ -29,8 +29,6 @@ if __name__ == '__main__':
 
 
     # Example usage
-    # file_path = '/Users/jialong/Downloads/CSC3065 Assignment 1.docx'
-    file_path = '/Users/jialong/PycharmProjects/RCMFS/files/t1.docx'
     document_text = read_word_doc(file_path)
 
     paragraphs = []
@@ -47,23 +45,35 @@ if __name__ == '__main__':
 
     # predict paragraphs
     pred = model.predict(data)
-
-
-    for i in range(paragraphs.shape[0]):
-        print(paragraphs[i])
-        print(pred[i])
-        print()
-        print()
-    print('ref:')
-    print(np.count_nonzero(pred == 1))
-    print('non ref:')
-    print(np.count_nonzero(pred == 0))
-
-    for i in range(len(data)):
-        print(data[i])
-        print(pred[i])
-
+    print(pred)
+    refs = []
     for i in range(paragraphs.shape[0]):
         if pred[i] == 1:
-            print(paragraphs[i])
+            refs.append(paragraphs[i])
 
+    with open('extracted_references.txt', 'w') as file:
+        for row in refs:
+            row = row.replace('\u00A0', ' ')
+            file.write(row + '\n')
+
+    return refs
+
+    # test = pd.DataFrame([
+    #                         '5.	Xu, X., Xu, A., Jiang, Y., Wang, Z., Wang, Q., Zhang, Y. and Wen, H., 2020, November. Research on Security Issues of Docker and Container Monitoring System in Edge Computing System. In Journal of Physics: Conference Series (Vol. 1673, No. 1, p. 012067). IOP Publishing.']
+    #
+    #                     , columns=['content'])
+    #
+    # print(ref_ext.feature_extraction(test))
+    # print(model.predict([[1, 3, 0, 3, 0, 0, 4, 0]]))
+
+    # chunk_size = 10
+    # for i in range(0, data.shape[0], chunk_size):
+    #     part = data['content'][i:i+chunk_size]
+    #     feat_list = list(ref_ext.feature_extraction(part))
+    #     print(feat_list)
+
+    # ref_ext.feature_extraction()
+
+
+if __name__ == '__main__':
+    print(extract_ref('example path'))

@@ -1,5 +1,7 @@
 import reference_extractor
 import online_reference_extractor
+from reference_extractor_ml import *
+from component_identifier import *
 
 if __name__ == '__main__':
     """
@@ -13,11 +15,16 @@ if __name__ == '__main__':
     
     /Users/jialong/Desktop/main.tex
     """
+    # rule-based
+    # reference_extractor.extract_reference('/Users/jialong/Desktop/CSC3065Assignment1.pdf')
 
-    reference_extractor.extract_reference('/Users/jialong/Desktop/main.tex')
-
-
-
+    # machine learning based
+    """
+    Pipline:
+    """
+    extract_ref('files/t1.docx')
+    components = get_components()
+    print(components)
 
 
 
