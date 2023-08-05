@@ -13,11 +13,12 @@ if __name__ == '__main__':
         online_ref = ast.literal_eval(pair[1])
         print(f'for reference {i}:')
         print(ext_ref)
+        print(online_ref)
         online_ref['authors'] = ', '.join(online_ref['authors'])
         for key in ext_ref.keys():
             score = fuzz.token_set_ratio(ext_ref[key], online_ref[key])
             # print(f'reference {i} score for {key} is {score}')
-            if score <= 0:
+            if score <= 50:
                 print(f'your {key} is incorrect!')
 
         for key in online_ref.keys():
