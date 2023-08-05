@@ -3,6 +3,7 @@ import requests
 import subprocess
 from online_reference_extractor import *
 import time
+import json
 
 
 def preprocess(ref_str):
@@ -24,6 +25,7 @@ def preprocess(ref_str):
             print(item)
             values = re.findall(r'\{.*?}', item)[0][1:-1]
             new_ref_str_list.append(values)
+    print()
     return new_ref_str_list
 
 
@@ -44,6 +46,7 @@ def get_components():
 
     ref_list = []
     ref_dict = {}
+    ref_compare = []
     with open("extracted_references.txt", "r") as file:
         # Read the contents of the file
         for line in file:
@@ -64,6 +67,7 @@ def get_components():
             model = pickle.load(file)
 
         for ref in ref_list:
+            ref_dict = {}
             data = pd.DataFrame(ref, columns=['content'])
             feats = np.array(list(feature_extraction(data, ner=True)))
             # do transpose
@@ -88,7 +92,15 @@ def get_components():
                     ref_dict['doi'] = item
             print(ref_dict)
             time.sleep(0.5)
-            print(pubmed(ref_dict['title']))
+            online_ref = pubmed(ref_dict['title'])
+            print(online_ref)
+            print()
+            if online_ref != "":
+                ref_compare.append(ref_dict)
+                ref_compare.append(online_ref)
+    with open('ref_compare.txt', 'w') as f:
+        for item in ref_compare:
+            f.write(f'{item}\n')
     return ref_dict
 
 
