@@ -1,7 +1,6 @@
-import reference_extractor
-import online_reference_extractor
-from reference_extractor_ml import *
-from component_identifier import *
+from reference_extraction.reference_extractor_ml import *
+from component_identification.component_identifier import *
+from feedback_grading.grading import grade
 
 if __name__ == '__main__':
     """
@@ -22,10 +21,10 @@ if __name__ == '__main__':
     """
     Pipline:
     """
-    extract_ref('files/t1.docx')
+    extract_ref('test_docs/t1.docx')
     components = get_components()
     print(components)
-
+    grade()
 
 
 

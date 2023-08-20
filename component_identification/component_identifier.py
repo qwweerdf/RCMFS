@@ -1,9 +1,13 @@
-from component_identification import *
-import requests
+import pickle
+import re
 import subprocess
-from online_reference_extractor import *
+import os
+import numpy as np
+import pandas as pd
+
+from online_datasource.online_reference_extractor import *
 import time
-import json
+from component_identification.component_identification import *
 
 
 def preprocess(ref_str):
@@ -47,7 +51,7 @@ def get_components():
     ref_list = []
     ref_dict = {}
     ref_compare = []
-    with open("extracted_references.txt", "r") as file:
+    with open(os.path.dirname(os.getcwd()) + '/' + "reference_extraction/extracted_references.txt", "r") as file:
         # Read the contents of the file
         for line in file:
 
@@ -63,7 +67,7 @@ def get_components():
             ref_list.append(preprocess(ref))
 
 
-        with open('svm_component_identification.pkl', 'rb') as file:
+        with open(os.path.dirname(os.getcwd()) + '/' + 'component_identification/svm_component_identification.pkl', 'rb') as file:
             model = pickle.load(file)
 
         for ref in ref_list:
@@ -91,14 +95,14 @@ def get_components():
                 elif res[i] == 7:
                     ref_dict['doi'] = item
             print(ref_dict)
-            time.sleep(0.5)
+            # time.sleep(0.5)
             online_ref = pubmed(ref_dict['title'])
             print(online_ref)
             print()
             if online_ref != "":
                 ref_compare.append(ref_dict)
                 ref_compare.append(online_ref)
-    with open('ref_compare.txt', 'w') as f:
+    with open(os.path.dirname(os.getcwd()) + '/' + 'component_identification/ref_compare.txt', 'w') as f:
         for item in ref_compare:
             f.write(f'{item}\n')
     return ref_dict

@@ -19,7 +19,6 @@ def pubmed(title):
     summary_response = requests.get(summary_url).text
     summary_json = json.loads(summary_response)
 
-    print(summary_json)
     try:
         summ = summary_json['result'][ids[0]]
     except KeyError:
@@ -72,7 +71,7 @@ def get_ref(title):
 
 if __name__ == '__main__':
     ref_tags = []
-    for i in range(200):
+    for i in range(201, 601):
         curr_ref = []
         res = pubmed(str(i))
         curr_ref.append((', '.join(res['authors']), 'authors'))
@@ -90,7 +89,7 @@ if __name__ == '__main__':
         time.sleep(1)
         print(i)
 
-    with open('train.txt', 'a') as file:
+    with open('component_identification/train.txt', 'a') as file:
         # Write each element of the list on a separate line
         for row in ref_tags:
             line = repr(row)

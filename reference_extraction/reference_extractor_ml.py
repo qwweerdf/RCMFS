@@ -1,8 +1,9 @@
 import pickle
-import ref_ext
+from reference_extraction import ref_ext
 import pandas as pd
 import numpy as np
 from docx import Document
+import os
 
 
 def extract_features(para):
@@ -15,8 +16,8 @@ def extract_features(para):
 
 
 def extract_ref(file_path):
-
-    with open('svm_model.pkl', 'rb') as file:
+    print()
+    with open(os.path.dirname(os.getcwd()) + '/' + 'reference_extraction/svm_reference_extraction.pkl', 'rb') as file:
         model = pickle.load(file)
 
 
@@ -51,7 +52,7 @@ def extract_ref(file_path):
         if pred[i] == 1:
             refs.append(paragraphs[i])
 
-    with open('extracted_references.txt', 'w') as file:
+    with open(os.path.dirname(os.getcwd()) + '/' + 'reference_extraction/extracted_references.txt', 'w') as file:
         for row in refs:
             row = row.replace('\u00A0', ' ')
             file.write(row + '\n')

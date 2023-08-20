@@ -1,2 +1,0 @@
-Donald E. Knuth (1986) The Tex Book, Addison-Wesley Professional.
-Leslie Lamport (1994) LaTeX: a document preparation system, AddisonWesley, Massachusetts, 2nd ed.

@@ -1,6 +1,7 @@
 import nltk
 from nltk import pos_tag
 from nltk.tokenize import word_tokenize
+
 nltk.download('punkt')
 import ast
 import pandas as pd
@@ -10,14 +11,15 @@ import re
 import pickle
 from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, balanced_accuracy_score
 from sklearn.model_selection import StratifiedKFold
+
 nltk.download('averaged_perceptron_tagger')
 from flair.data import Sentence
 from flair.nn import Classifier
 
+tagger = Classifier.load('ner-fast')
+
 
 def feature_extraction(data, ner=False):
-    if ner:
-        tagger = Classifier.load('ner-fast')
     data_list = data.content.values.tolist()
     tokens = []
     for each in data_list:
@@ -40,7 +42,7 @@ def feature_extraction(data, ner=False):
     feat7 = []
     feat8 = []
     t1 = []
-    t2 =[]
+    t2 = []
     for i, each in enumerate(tokens):
         tags = pos_tag(each)
         tags = np.array(tags)
@@ -126,6 +128,7 @@ def feature_extraction(data, ner=False):
             feat8.append(0)
 
     return feat1, feat2, feat3, feat4, feat5, feat6, feat7, feat8
+
 
 def transform(data, ner=False):
     feat1, feat2, feat3, feat4, feat5, feat6, feat7, feat8 = feature_extraction(data, ner)
@@ -220,7 +223,7 @@ def train(x, y):
 def execute():
     def file_reader():
         ref_tags = []
-        with open('train.txt') as file:
+        with open('component_identification/train.txt') as file:
             for line in file:
                 ref_tags.append(ast.literal_eval(line))
 
@@ -246,10 +249,9 @@ def execute():
     best_model = train(x, y)
 
     # store data
-    with open('/Users/jialong/PycharmProjects/RCMFS/svm_component_identification.pkl', 'wb') as file:
+    with open('component_identification/svm_component_identification.pkl', 'wb') as file:
         pickle.dump(best_model, file)
 
 
 if __name__ == '__main__':
     execute()
-

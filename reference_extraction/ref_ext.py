@@ -8,10 +8,13 @@ from nltk import pos_tag
 from sklearn import svm
 from sklearn.model_selection import StratifiedKFold, KFold
 from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, f1_score, balanced_accuracy_score
-
+from flair.data import Sentence
+from flair.nn import Classifier
 
 # feature extraction
 def feature_extraction(data):
+    # tagger = Classifier.load('ner-fast')
+
     data_list = data.content.values.tolist()
     tokens = []
     for each in data_list:
@@ -35,13 +38,27 @@ def feature_extraction(data):
     feat7 = []
     feat8 = []
     feat9 = []
-    for token in tokens:
+    for i, token in enumerate(tokens):
         tags = pos_tag(token)
-        # tagger = PerceptronTagger()
-        # tags = tagger.tag(token)
+
+
         tags = np.array(tags)
         NNP_count = np.sum(tags[:, 1] == 'NNP')
         feat1.append(NNP_count)
+        # NNP_count = np.sum(tags[:, 1] == 'NNP')
+        # make a sentence
+        # sentence = Sentence(data_list[i])
+        #
+        # # run NER over sentence
+        # tagger.predict(sentence)
+        #
+        # # print the sentence with all annotations
+        # print(sentence.labels)
+        # count = 0
+        # for label in sentence.labels:
+        #     if label.value == 'PER':
+        #         count += 1
+        # feat1.append(count)
 
         VB_count = np.sum(tags[:, 1] == 'VB')
         VBZ_count = np.sum(tags[:, 1] == 'VBZ')
@@ -112,8 +129,8 @@ def transform(data):
         print('{} is reference var: {}'.format(feat, np.var(data[feat].loc[data['label'] == 1])))
         print()
 
-    x = data.iloc[:, 2:]
-    y = data['label']
+    x = data.iloc[:, 2:].values
+    y = data['label'].values
 
     return x, y
 
@@ -127,16 +144,16 @@ def train(x, y):
     models = []
 
     # Define the number of folds
-    k = 10
+    num_folds = 10
 
-    # Create a KFold object
-    kf = KFold(n_splits=k, shuffle=True)
+    # Initialize the stratified k-fold cross-validation
+    skf = StratifiedKFold(n_splits=num_folds, shuffle=True)
 
     # Perform k-fold cross-validation
-    for train_index, test_index in kf.split(x):
+    for train_index, test_index in skf.split(x, y):
         # Split the data into training and test sets for this fold
-        X_train, X_test = x[train_index[0]:], x[test_index[0]:]
-        y_train, y_test = y[train_index[0]:], y[test_index[0]:]
+        X_train, X_test = x[train_index], x[test_index]
+        y_train, y_test = y[train_index], y[test_index]
 
         # Create an SVM model
         model = svm.SVC()
@@ -166,19 +183,19 @@ def train(x, y):
         models.append(model)
 
     # Calculate the average accuracy across all folds
-    average_accuracy = sum(accuracies) / k
+    average_accuracy = sum(accuracies) / num_folds
     print("Average Accuracy:", average_accuracy)
 
-    average_balanced_accuracy_scores = sum(balanced_accuracy_scores) / k
+    average_balanced_accuracy_scores = sum(balanced_accuracy_scores) / num_folds
     print("Average balanced Accuracy:", average_balanced_accuracy_scores)
 
-    average_roc_score = sum(roc_scores) / k
+    average_roc_score = sum(roc_scores) / num_folds
     print("Average roc score:", average_roc_score)
 
-    average_pr_score = sum(pr_scores) / k
+    average_pr_score = sum(pr_scores) / num_folds
     print("Average pr score:", average_pr_score)
 
-    average_f1_score = sum(f1_scores) / k
+    average_f1_score = sum(f1_scores) / num_folds
     print("Average f1 score:", average_f1_score)
     best_performance_index = pr_scores.index(max(pr_scores))
 
@@ -188,7 +205,7 @@ def train(x, y):
 def execute():
     # read data
     raw = []
-    with open('corpus.txt') as file:
+    with open('reference_extraction/corpus.txt') as file:
         for row in file:
             row = row.replace('\n', '')
             row = row.replace('</fnote>', '')
@@ -205,7 +222,7 @@ def execute():
     best_model = train(x, y)
 
     # store data
-    with open('svm_model.pkl', 'wb') as file:
+    with open('reference_extraction/svm_reference_extraction.pkl', 'wb') as file:
         pickle.dump(best_model, file)
 
 

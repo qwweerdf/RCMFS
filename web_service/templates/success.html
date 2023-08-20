@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Success</title>
+</head>
+<body>
+    <h1>success</h1>
+    <h2>averaged score for reference missing: {{ grades[0] }}</h2>
+    <h2>averaged score for incorrect reference: {{ grades[1] }}</h2>
+    <h2>averaged score total grade: {{ grades[2] }}</h2>
+    <h1>Feedback</h1>
+    {% for each in fb %}
+        <p>{{ each|replace('\n', '<br>')|safe }}</p>
+    {% endfor %}
+</body>
+</html>

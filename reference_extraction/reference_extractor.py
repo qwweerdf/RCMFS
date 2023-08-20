@@ -4,8 +4,10 @@ import re
 import linecache
 import os
 import pypandoc
+import PyPDF2
 
 from bs4 import BeautifulSoup
+
 
 REF_LIST = [
     'reference',
@@ -96,8 +98,21 @@ def reference_extraction_tex(path):
     return ref_content[1:]
 
 
+# def reference_extraction_pdf(path):
+#     pdf = open(path, 'rb')
+#     pdf_reader = PyPDF2.PdfFileReader(pdf)
+#     references = []
+#     print(pdf_reader.getDocumentInfo())
+#     # for page_num in range(pdf_reader.numPages):
+#     #     page = pdf_reader.getPage(page_num)
+#     #     text = page.
+#     #     print(text)
+#     #     print()
+#     #     print()
+
+
 def reference_writer(reference_list):
-    with open('reference_list.txt', 'w') as f:
+    with open('../test/reference_list.txt', 'w') as f:
         for item in reference_list:
             f.write('%s\n' % item)
 
@@ -123,6 +138,9 @@ def extract_reference(path=None):
         reference_list = reference_extraction_tex(path)
         reference_writer(reference_list)
         return reference_list
+    elif file_type == 'pdf':
+        # reference_extraction_pdf(path)
+        pass
     else:
         print('file type not supported')
         sys.exit()
