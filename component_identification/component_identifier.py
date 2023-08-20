@@ -4,6 +4,7 @@ import subprocess
 import os
 import numpy as np
 import pandas as pd
+import bibtexparser
 
 from online_datasource.online_reference_extractor import *
 import time
@@ -33,7 +34,7 @@ def preprocess(ref_str):
     return new_ref_str_list
 
 
-def get_components():
+def get_components(ftype):
     # resp = requests.post('http://cermine.ceon.pl/parse.do', data={
     #     'reference': "Ansari, U. B., & Sarode, T. (2017). Skin cancer detection using image processing. Int. Res. J. Eng. Technol, 4(4), 2875-2881."})
     # print(resp.content)
@@ -46,7 +47,38 @@ def get_components():
     # x = list(map(list, zip(*(feats.tolist()))))
     # print(model.predict(x))
 
-
+    if ftype == 'bib':
+        bib_ref_compare = []
+        with open('/Users/jialong/Desktop/ref.bib', 'r') as f:
+            bib_database = bibtexparser.load(f)
+        for each in bib_database.entries:
+            bib_ref_dict = {}
+            if 'author' in each:
+                bib_ref_dict['authors'] = each['author']
+            if 'title' in each:
+                bib_ref_dict['title'] = each['title']
+            if 'volume' in each:
+                bib_ref_dict['volume'] = each['volume']
+            if 'issue' in each:
+                bib_ref_dict['issue'] = each['issue']
+            if 'journal' in each:
+                bib_ref_dict['journal'] = each['journal']
+            if 'pages' in each:
+                bib_ref_dict['pages'] = each['pages']
+            if 'year' in each:
+                bib_ref_dict['year'] = each['year']
+            if 'doi' in each:
+                bib_ref_dict['doi'] = each['doi']
+            bib_online_ref = pubmed(bib_ref_dict['title'])
+            print(bib_ref_dict)
+            print(bib_online_ref)
+            if bib_online_ref != "":
+                bib_ref_compare.append(bib_ref_dict)
+                bib_ref_compare.append(bib_online_ref)
+        with open(os.path.dirname(os.getcwd()) + '/' + 'component_identification/ref_compare.txt', 'w') as f:
+            for item in bib_ref_compare:
+                f.write(f'{item}\n')
+        return ""
 
     ref_list = []
     ref_dict = {}
@@ -109,4 +141,4 @@ def get_components():
 
 
 if __name__ == '__main__':
-    get_components()
+    get_components(ftype='docx')

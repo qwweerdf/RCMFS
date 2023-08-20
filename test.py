@@ -1,6 +1,7 @@
 from reference_extraction.reference_extractor_ml import *
 from component_identification.component_identifier import *
 from feedback_grading.grading import grade
+import os
 
 if __name__ == '__main__':
     """
@@ -21,10 +22,14 @@ if __name__ == '__main__':
     """
     Pipline:
     """
-    extract_ref('test_docs/t1.docx')
-    components = get_components()
-    print(components)
-    grade()
+    # path = '/Users/jialong/Desktop/ref.bib'
+    # extension = os.path.splitext(path)[1][1:]
+    # if extension == 'doc' or extension == 'docx':
+    #     extract_ref(path)
+    # print(extension)
+    # components = get_components(ftype=extension)
+    # print(components)
+    # grade()
 
 
 
