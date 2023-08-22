@@ -128,7 +128,10 @@ def get_components(ftype):
                     ref_dict['doi'] = item
             print(ref_dict)
             # time.sleep(0.5)
-            online_ref = pubmed(ref_dict['title'])
+            try:
+                online_ref = pubmed(ref_dict['title'])
+            except KeyError:
+                continue
             print(online_ref)
             print()
             if online_ref != "":

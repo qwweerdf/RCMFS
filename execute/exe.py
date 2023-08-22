@@ -5,10 +5,17 @@ from feedback_grading.grading import grade
 
 if __name__ == '__main__':
 
-    path = '/Users/jialong/Desktop/ref.bib'
+    # path = '/Users/jialong/Desktop/ref.bib'
+    # user defined variables
+    # model_type: svm/brf/nn/perceptron
+    path = '/Users/jialong/PycharmProjects/RCMFS/test_docs/t1.docx'
+    model_type = 'svm'
+
+
+
     extension = os.path.splitext(path)[1][1:]
     if extension == 'doc' or extension == 'docx':
-        extract_ref(path)
+        extract_ref(path, model_type=model_type)
     print(extension)
     components = get_components(ftype=extension)
     print(components)

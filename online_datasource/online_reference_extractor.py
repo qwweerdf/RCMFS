@@ -22,7 +22,10 @@ def pubmed(title):
     try:
         summ = summary_json['result'][ids[0]]
     except KeyError:
-        print('cannot find the search result, continue to the next one!')
+        print('cannot find the search result in pubmed, try search at crossref!')
+        cross_ref_res = crossref(title)
+        if cross_ref_res != "":
+            return cross_ref_res
         return ""
 
     # generate the customised dict
@@ -50,6 +53,72 @@ def pubmed(title):
             pubmed_ref['doi'] = idtype['value']
 
     return pubmed_ref
+
+
+
+
+def crossref(title):
+    res = requests.get(
+        f'https://api.crossref.org/works?query={title}&rows=1')
+
+    original_ref_dict = res.json()
+    try:
+        summ = original_ref_dict['message']['items'][0]
+    except KeyError:
+        print('cannot find the search result in crossref, continue to the next one!')
+        return ""
+
+
+    ref_dict = {}
+
+    try:
+        authors = []
+        for author in summ['author']:
+            full_name = author['given'] + " " + author['family']
+            authors.append(full_name)
+
+        ref_dict['authors'] = authors
+    except KeyError:
+        pass
+
+
+    try:
+        ref_dict['title'] = summ['title'][0]
+    except KeyError:
+        pass
+
+    try:
+        ref_dict['volume'] = summ['volume']
+    except KeyError:
+        pass
+
+    try:
+        ref_dict['issue'] = summ['journal-issue']['issue']
+    except KeyError:
+        pass
+
+    try:
+        ref_dict['pages'] = summ['page']
+    except KeyError:
+        pass
+
+    try:
+        ref_dict['journal'] = summ['short-container-title'][0]
+    except KeyError:
+        pass
+
+    try:
+        ref_dict['year'] = summ['published']['date-parts'][0][0]
+    except KeyError:
+        pass
+
+    try:
+        ref_dict['doi'] = summ['DOI']
+    except KeyError:
+        pass
+
+    return ref_dict
+
 
 
 def get_ref(title):

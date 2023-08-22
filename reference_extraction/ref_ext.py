@@ -1,15 +1,26 @@
+import os
 import pickle
 import re
 import numpy as np
 import pandas as pd
-
+import xgboost as xgb
+from sklearn.linear_model import Perceptron
 from nltk.tokenize import word_tokenize
 from nltk import pos_tag
 from sklearn import svm
-from sklearn.model_selection import StratifiedKFold, KFold
+from torch.utils.data import TensorDataset
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, f1_score, balanced_accuracy_score
 from flair.data import Sentence
+from torch.utils.data import DataLoader
 from flair.nn import Classifier
+from imblearn.ensemble import BalancedRandomForestClassifier
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import matplotlib.pyplot as plt
+
 
 # feature extraction
 def feature_extraction(data):
@@ -29,6 +40,8 @@ def feature_extraction(data):
     # feature 7: amount of DT+TO+EX+CC+JJ+RB+WDT+RBR+JJR
     # feature 8: amount of MD
     # feature 9: text length
+    # feature 10: if page exist (p. or pp.)
+    # feature 11: if volume exist (vol.)
     feat1 = []
     feat2 = []
     feat3 = []
@@ -38,9 +51,10 @@ def feature_extraction(data):
     feat7 = []
     feat8 = []
     feat9 = []
+    feat10 = []
+    feat11 = []
     for i, token in enumerate(tokens):
         tags = pos_tag(token)
-
 
         tags = np.array(tags)
         NNP_count = np.sum(tags[:, 1] == 'NNP')
@@ -106,11 +120,23 @@ def feature_extraction(data):
 
         lengths = [len(s) for s in token]
         feat9.append(sum(lengths))
-    return feat1, feat2, feat3, feat4, feat5, feat6, feat7, feat8, feat9
+
+        if 'p.' or 'pp' in token:
+            feat10.append(1)
+        else:
+            feat10.append(0)
+
+        if 'vol' in token:
+            feat11.append(1)
+        else:
+            feat11.append(0)
+
+
+    return feat1, feat2, feat3, feat4, feat5, feat6, feat7, feat8, feat9, feat10, feat11
 
 
 def transform(data):
-    feat1, feat2, feat3, feat4, feat5, feat6, feat7, feat8, feat9 = feature_extraction(data)
+    feat1, feat2, feat3, feat4, feat5, feat6, feat7, feat8, feat9, feat10, feat11 = feature_extraction(data)
     data['nnp'] = feat1
     data['vb'] = feat2
     data['comma'] = feat3
@@ -120,6 +146,8 @@ def transform(data):
     data['sent'] = feat7
     data['md'] = feat8
     data['length'] = feat9
+    data['page'] = feat10
+    data['volume'] = feat11
     data.drop('content', axis=1)
 
     for feat in ['nnp', 'vb', 'comma', 'dot', 'digit', 'year', 'sent', 'md', 'length']:
@@ -135,7 +163,7 @@ def transform(data):
     return x, y
 
 
-def train(x, y):
+def train(x, y, model_type='svm'):
     accuracies = []
     balanced_accuracy_scores = []
     roc_scores = []
@@ -156,7 +184,14 @@ def train(x, y):
         y_train, y_test = y[train_index], y[test_index]
 
         # Create an SVM model
-        model = svm.SVC()
+        if model_type == 'svm':
+            model = svm.SVC()
+        elif model_type == 'perceptron':
+            model = Perceptron(max_iter=1000, tol=1e-3)
+        elif model_type == 'brf':
+            model = BalancedRandomForestClassifier(n_estimators=100)  # 100 trees in the forest
+        else:
+            return "model type is not supported!"
 
         # Fit the model to the training data
         model.fit(X_train, y_train)
@@ -202,10 +237,95 @@ def train(x, y):
     return models[best_performance_index]
 
 
-def execute():
+class SimpleNN(nn.Module):
+    def __init__(self, input_dim):
+        super(SimpleNN, self).__init__()
+        self.fc1 = nn.Linear(input_dim, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, 1)
+
+    def forward(self, x):
+        x = torch.relu(self.fc1(x))
+        x = torch.relu(self.fc2(x))
+        x = torch.sigmoid(self.fc3(x))
+        return x
+
+
+def train_nn(X, y):
+    # hyperparameters
+    epochs = 500
+    batch_size = 32
+    lr = 0.0001
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
+
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32)
+
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+    y_test_tensor = torch.tensor(y_test, dtype=torch.float32)
+
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+
+    # Assuming X_train is your input tensor and y_train are your binary labels
+    input_dim = X_train.shape[1]
+    model = SimpleNN(input_dim)
+
+    loss_function = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    train_losses = []
+    eval_losses = []
+    # Training loop
+    for epoch in range(epochs):
+        train_loss = 0
+        for inputs, targets in train_loader:
+            model.train()
+            optimizer.zero_grad()
+
+            outputs = model(inputs)
+            loss = loss_function(outputs, targets.reshape(-1, 1))
+            loss.backward()
+            optimizer.step()
+            train_loss += loss
+
+        current_train_loss = train_loss / len(train_loader)
+        train_losses.append(current_train_loss.detach().numpy())
+        print(f"Train Epoch {epoch + 1}/{epochs}, Loss: {current_train_loss}")
+
+        model.eval()
+        eval_loss = 0
+        accuracy = 0
+        for inputs, targets in test_loader:
+            with torch.no_grad():
+                output = model(inputs)
+                loss = loss_function(output, targets.reshape(-1, 1))
+                y_pred = np.where(output.numpy() < 0.5, 0, 1)
+                eval_loss += loss
+                accuracy += accuracy_score(targets, y_pred)
+        current_eval_loss = eval_loss / len(test_loader)
+        eval_losses.append(current_eval_loss.detach().numpy())
+        print(f"Validation Epoch {epoch + 1}/{epochs}, Loss: {current_eval_loss}")
+        print(f"Validation Epoch {epoch + 1}/{epochs}, accuracy: {accuracy / len(test_loader)}")
+
+    plt.plot(train_losses, label="train")
+    plt.plot(eval_losses, label="eval")
+    plt.legend()
+    plt.show()
+
+    torch.save(model.state_dict(), 'nn_reference_extraction.pth')
+    return 0
+
+
+def execute(model='svm'):
     # read data
     raw = []
-    with open('reference_extraction/corpus.txt') as file:
+    with open(os.path.dirname(os.getcwd()) + '/' + 'reference_extraction/corpus.txt') as file:
         for row in file:
             row = row.replace('\n', '')
             row = row.replace('</fnote>', '')
@@ -215,16 +335,20 @@ def execute():
     # data preparation
     data = pd.DataFrame(raw, columns=['content'])
     data['label'] = 1
-    data['label'].iloc[250:] = 0
+    data['label'].iloc[850:] = 0
 
     # feature extraction and train
     x, y = transform(data)
-    best_model = train(x, y)
+    if model != 'nn':
+        best_model = train(x, y, model_type=model)
+        # store data
+        with open(os.path.dirname(os.getcwd()) + '/' + f'reference_extraction/{model}_reference_extraction.pkl', 'wb') as file:
+            pickle.dump(best_model, file)
+    else:
+        train_nn(x, y)
 
-    # store data
-    with open('reference_extraction/svm_reference_extraction.pkl', 'wb') as file:
-        pickle.dump(best_model, file)
+
 
 
 if __name__ == '__main__':
-    execute()
+    execute(model='svm')

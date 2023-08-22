@@ -19,9 +19,16 @@ def feedback():
         fb.append(f'for reference {i}:')
         fb.append(ext_ref)
         fb.append(online_ref)
-        online_ref['authors'] = ', '.join(online_ref['authors'])
+        try:
+            online_ref['authors'] = ', '.join(online_ref['authors'])
+        except KeyError:
+            pass
+
         for key in ext_ref.keys():
-            score = fuzz.token_set_ratio(ext_ref[key], online_ref[key])
+            try:
+                score = fuzz.token_set_ratio(ext_ref[key], online_ref[key])
+            except KeyError:
+                continue
             # print(f'reference {i} score for {key} is {score}')
             if score <= 50:
                 fb.append(f'your {key} is incorrect!')

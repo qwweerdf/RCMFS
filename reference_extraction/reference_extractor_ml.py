@@ -1,9 +1,14 @@
 import pickle
+import sys
+
+import torch
+
 from reference_extraction import ref_ext
 import pandas as pd
 import numpy as np
 from docx import Document
 import os
+import xgboost as xgb
 
 
 def extract_features(para):
@@ -15,10 +20,10 @@ def extract_features(para):
     return list(map(list, zip(*(feats.tolist()))))
 
 
-def extract_ref(file_path):
-    print()
-    with open(os.path.dirname(os.getcwd()) + '/' + 'reference_extraction/svm_reference_extraction.pkl', 'rb') as file:
-        model = pickle.load(file)
+def extract_ref(file_path, model_type='svm'):
+    if model_type != 'nn':
+        with open(os.path.dirname(os.getcwd()) + '/' + f'reference_extraction/{model_type}_reference_extraction.pkl', 'rb') as file:
+            model = pickle.load(file)
 
 
     def read_word_doc(file_path):
@@ -44,8 +49,17 @@ def extract_ref(file_path):
     # feature extraction
     data = extract_features(paragraphs)
 
-    # predict paragraphs
-    pred = model.predict(data)
+    if model_type == 'nn':
+        nn_model = ref_ext.SimpleNN(len(data[0]))
+        nn_model_path = os.path.dirname(os.getcwd()) + '/' + 'reference_extraction/nn_reference_extraction.pth'
+        nn_model.load_state_dict(torch.load(nn_model_path))
+        nn_model.eval()  # Set the model to evaluation mode
+        output = nn_model(torch.tensor(data).float())
+        pred = [0 if item < 0.5 else 1 for item in output.detach().numpy()]
+    else:
+        # predict paragraphs
+        pred = model.predict(data)
+
     print(pred)
     refs = []
     for i in range(paragraphs.shape[0]):
@@ -56,7 +70,8 @@ def extract_ref(file_path):
         for row in refs:
             row = row.replace('\u00A0', ' ')
             file.write(row + '\n')
-
+    for ref in refs:
+        print(ref)
     return refs
 
     # test = pd.DataFrame([
