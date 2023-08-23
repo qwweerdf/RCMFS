@@ -56,7 +56,6 @@ def feature_extraction(data):
     feat11 = []
     for i, token in enumerate(tokens):
         tags = pos_tag(token)
-
         tags = np.array(tags)
         NNP_count = np.sum(tags[:, 1] == 'NNP')
         feat1.append(NNP_count)

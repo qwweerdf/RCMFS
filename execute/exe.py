@@ -8,8 +8,8 @@ if __name__ == '__main__':
     # path = '/Users/jialong/Desktop/ref.bib'
     # user defined variables
     # model_type: svm/brf/nn/perceptron
-    path = '/Users/jialong/PycharmProjects/RCMFS/test_docs/t1.docx'
-    model_type = 'svm'
+    path = '/Users/jialong/PycharmProjects/RCMFS/test_docs/t3.docx'
+    model_type = 'nn'
 
 
 

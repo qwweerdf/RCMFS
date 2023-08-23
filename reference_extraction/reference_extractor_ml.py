@@ -22,9 +22,9 @@ def extract_features(para):
 
 def extract_ref(file_path, model_type='svm'):
     if model_type != 'nn':
-        with open(os.path.dirname(os.getcwd()) + '/' + f'reference_extraction/{model_type}_reference_extraction.pkl', 'rb') as file:
+        with open(os.path.dirname(os.getcwd()) + '/' + f'reference_extraction/{model_type}_reference_extraction.pkl',
+                  'rb') as file:
             model = pickle.load(file)
-
 
     def read_word_doc(file_path):
         doc = Document(file_path)
@@ -33,7 +33,6 @@ def extract_ref(file_path, model_type='svm'):
             text.append(paragraph.text)
         return text
 
-
     # Example usage
     document_text = read_word_doc(file_path)
 
@@ -41,7 +40,7 @@ def extract_ref(file_path, model_type='svm'):
 
     # data cleaning and append document to a list
     for paragraph in document_text:
-        if paragraph == "" or paragraph == '\n' or paragraph == '\t':
+        if paragraph == "" or paragraph == '\n' or paragraph == '\t' or '\n' in paragraph or '\t' in paragraph:
             continue
         paragraphs.append(paragraph)
     paragraphs = np.array(paragraphs)

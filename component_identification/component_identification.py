@@ -128,7 +128,7 @@ def feature_extraction(data, ner=False):
         if re.match(r'^\d+$', each[0]) is not None and contains_year(each) == 0 and re.match(r'(http:\/\/dx.doi.org\/)?10\.\d{4,9}(\/.+)+', each[0]) is None and re.match(r'^\d+-+\d+$', each[0]) is None and int(each[0]) <= 100:
             value = int(re.search(r'\d+', each[0]).group())
             # error handling for the first and last token
-            if i != 0 or i != len(tokens) - 1:
+            if i != 0 and i != len(tokens) - 1:
                 # if previous token is a digit number, it means that it is more possible an issue number and also avoid large page number
                 if re.match(r'\d+', tokens[i-1][0]) is not None and re.match(r'^\d+-+\d+$', tokens[i-1][0]) is None and int(tokens[i-1][0]) <= 100:
                     feat7.append(0)
