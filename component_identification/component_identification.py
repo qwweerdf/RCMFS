@@ -1,6 +1,16 @@
+import os
+
 import nltk
 from nltk import pos_tag
 from nltk.tokenize import word_tokenize
+from sklearn.linear_model import Perceptron
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset, random_split
+import matplotlib.pyplot as plt
+import reference_extraction.ref_ext
 
 nltk.download('punkt')
 import ast
@@ -9,9 +19,9 @@ import numpy as np
 from sklearn import svm
 import re
 import pickle
-from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, balanced_accuracy_score
-from sklearn.model_selection import StratifiedKFold
-
+from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, balanced_accuracy_score, confusion_matrix
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from imblearn.ensemble import BalancedRandomForestClassifier
 nltk.download('averaged_perceptron_tagger')
 from flair.data import Sentence
 from flair.nn import Classifier
@@ -46,7 +56,6 @@ def feature_extraction(data, ner=False):
     for i, each in enumerate(tokens):
         tags = pos_tag(each)
         tags = np.array(tags)
-
         if ner:
             # make a sentence
             sentence = Sentence(data_list[i])
@@ -115,14 +124,30 @@ def feature_extraction(data, ner=False):
         exist_year = contains_year(each)
         feat6.append(exist_year)
 
-        if re.match(r'\d+', each[0]) is not None:
+        # if the token is not a year and is a digit
+        if re.match(r'^\d+$', each[0]) is not None and contains_year(each) == 0 and re.match(r'(http:\/\/dx.doi.org\/)?10\.\d{4,9}(\/.+)+', each[0]) is None and re.match(r'^\d+-+\d+$', each[0]) is None and int(each[0]) <= 100:
             value = int(re.search(r'\d+', each[0]).group())
-            if value > 20:
-                feat7.append(1)
-                feat8.append(0)
+            # error handling for the first and last token
+            if i != 0 or i != len(tokens) - 1:
+                # if previous token is a digit number, it means that it is more possible an issue number and also avoid large page number
+                if re.match(r'\d+', tokens[i-1][0]) is not None and re.match(r'^\d+-+\d+$', tokens[i-1][0]) is None and int(tokens[i-1][0]) <= 100:
+                    feat7.append(0)
+                    feat8.append(1)
+                # if next token is a digit number, it means that it is more possible a volume number
+                elif re.match(r'\d+', tokens[i+1][0]) is not None and re.match(r'^\d+-+\d+$', tokens[i+1][0]) is None and int(tokens[i+1][0]) <= 100:
+                    feat7.append(1)
+                    feat8.append(0)
+                # if neither previous nor next token are digit number, then set threshold 20 between volume and issue and also avoid large page number
+                else:
+                    if value > 20:
+                        feat7.append(1)
+                        feat8.append(0)
+                    else:
+                        feat7.append(0)
+                        feat8.append(1)
             else:
                 feat7.append(0)
-                feat8.append(1)
+                feat8.append(0)
         else:
             feat7.append(0)
             feat8.append(0)
@@ -170,14 +195,16 @@ def train(x, y):
         y_train, y_test = y[train_index], y[test_index]
 
         # Create a logistic regression model
-        model = svm.SVC(probability=True)
-
+        # model = svm.SVC(probability=True)
+        # model = BalancedRandomForestClassifier(n_estimators=100)  # 100 trees in the forest
+        model = Perceptron(max_iter=1000, tol=1e-3)
         # Fit the model to the training data
         model.fit(X_train, y_train)
 
         # Make predictions on the test data
         y_pred = model.predict(X_test)
-
+        matrix = confusion_matrix(y_test, y_pred)
+        print(matrix)
         # Calculate the accuracy of the model for this fold
         accuracy = accuracy_score(y_test, y_pred)
         accuracies.append(accuracy)
@@ -220,10 +247,94 @@ def train(x, y):
     return models[best_performance_index]
 
 
-def execute():
+
+class TabularNN(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super(TabularNN, self).__init__()
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
+
+
+
+def train_nn(X, y):
+    num_classes = 8
+    batch_size = 32
+    lr = 0.001
+    # Create datasets and dataloaders
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
+
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.float32)
+
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32)
+    y_test_tensor = torch.tensor(y_test, dtype=torch.float32)
+
+    train_dataset = TensorDataset(X_train_tensor, y_train_tensor)
+    test_dataset = TensorDataset(X_test_tensor, y_test_tensor)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+
+    # Initialize model, loss, and optimizer
+    model = TabularNN(input_dim=X.shape[1], hidden_dim=50, output_dim=num_classes)
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+
+    # Training loop
+    train_losses = []
+    eval_losses = []
+    epochs = 15
+    for epoch in range(epochs):
+        train_loss = 0
+        model.train()
+        for batch in train_loader:
+            data, targets = batch
+            optimizer.zero_grad()
+            outputs = model(data)
+            loss = loss_fn(outputs, targets.long())
+            train_loss += loss
+            loss.backward()
+            optimizer.step()
+        current_train_loss = train_loss / len(train_loader)
+        train_losses.append(current_train_loss.detach().numpy())
+        print(f"Epoch {epoch + 1}/{epochs}, Loss: {current_train_loss}")
+
+        model.eval()
+        correct = 0
+        total = 0
+        eval_loss = 0
+        with torch.no_grad():
+            for batch in test_loader:
+                data, targets = batch
+                outputs = model(data)
+                loss = loss_fn(outputs, targets.long())
+                eval_loss += loss
+                _, predicted = torch.max(outputs.data, 1)
+                total += targets.size(0)
+                correct += (predicted == targets).sum().item()
+
+            current_eval_loss = eval_loss / len(test_loader)
+            eval_losses.append(current_eval_loss.detach().numpy())
+            print(f"Epoch {epoch + 1}/{epochs}, Loss: {current_eval_loss}")
+            print(f"Eval accuracy: {100 * correct / total:.2f}%")
+
+    plt.plot(train_losses, label="train")
+    plt.plot(eval_losses, label="eval")
+    plt.legend()
+    plt.show()
+
+    torch.save(model.state_dict(), f'nn_component_identification.pth')
+
+
+def execute(model='svm'):
     def file_reader():
         ref_tags = []
-        with open('component_identification/train.txt') as file:
+        with open(os.path.dirname(os.getcwd()) + '/' + 'component_identification/train.txt') as file:
             for line in file:
                 ref_tags.append(ast.literal_eval(line))
 
@@ -246,12 +357,16 @@ def execute():
 
     # transform and train
     x, y = transform(data, ner=True)
-    best_model = train(x, y)
+    print(x, y)
+    if model != 'nn':
+        best_model = train(x, y)
 
-    # store data
-    with open('component_identification/svm_component_identification.pkl', 'wb') as file:
-        pickle.dump(best_model, file)
+        # store data
+        with open(os.path.dirname(os.getcwd()) + '/' + 'component_identification/perceptron_component_identification.pkl', 'wb') as file:
+            pickle.dump(best_model, file)
+    else:
+        train_nn(x, y)
 
 
 if __name__ == '__main__':
-    execute()
+    execute(model='nn')

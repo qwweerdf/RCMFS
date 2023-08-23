@@ -4,6 +4,7 @@ import re
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+import torch.nn.functional as F
 from sklearn.linear_model import Perceptron
 from nltk.tokenize import word_tokenize
 from nltk import pos_tag
@@ -238,11 +239,11 @@ def train(x, y, model_type='svm'):
 
 
 class SimpleNN(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, output=1):
         super(SimpleNN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 128)
         self.fc2 = nn.Linear(128, 64)
-        self.fc3 = nn.Linear(64, 1)
+        self.fc3 = nn.Linear(64, output)
 
     def forward(self, x):
         x = torch.relu(self.fc1(x))
@@ -251,11 +252,11 @@ class SimpleNN(nn.Module):
         return x
 
 
-def train_nn(X, y):
+def train_nn(X, y, params):
     # hyperparameters
-    epochs = 500
-    batch_size = 32
-    lr = 0.0001
+    epochs = params['epochs']
+    batch_size = params['batch_size']
+    lr = params['lr']
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
 
@@ -275,7 +276,6 @@ def train_nn(X, y):
     # Assuming X_train is your input tensor and y_train are your binary labels
     input_dim = X_train.shape[1]
     model = SimpleNN(input_dim)
-
     loss_function = nn.BCELoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
@@ -290,6 +290,7 @@ def train_nn(X, y):
 
             outputs = model(inputs)
             loss = loss_function(outputs, targets.reshape(-1, 1))
+
             loss.backward()
             optimizer.step()
             train_loss += loss
@@ -318,7 +319,7 @@ def train_nn(X, y):
     plt.legend()
     plt.show()
 
-    torch.save(model.state_dict(), 'nn_reference_extraction.pth')
+    torch.save(model.state_dict(), f'nn_reference_extraction.pth')
     return 0
 
 
@@ -345,10 +346,16 @@ def execute(model='svm'):
         with open(os.path.dirname(os.getcwd()) + '/' + f'reference_extraction/{model}_reference_extraction.pkl', 'wb') as file:
             pickle.dump(best_model, file)
     else:
-        train_nn(x, y)
+        params = {
+            'epochs': 500,
+            'batch_size': 32,
+            'lr': 0.0001
+        }
+
+        train_nn(x, y, params)
 
 
 
 
 if __name__ == '__main__':
-    execute(model='svm')
+    execute(model='nn')

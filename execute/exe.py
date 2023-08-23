@@ -17,7 +17,7 @@ if __name__ == '__main__':
     if extension == 'doc' or extension == 'docx':
         extract_ref(path, model_type=model_type)
     print(extension)
-    components = get_components(ftype=extension)
+    components = get_components(ftype=extension, model_type='nn')
     print(components)
     grades, fb = grade()
     for line in fb:

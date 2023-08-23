@@ -2,10 +2,14 @@ import pickle
 import re
 import subprocess
 import os
+import sys
+
 import numpy as np
 import pandas as pd
 import bibtexparser
+import torch
 
+import component_identification.component_identification
 from online_datasource.online_reference_extractor import *
 import time
 from component_identification.component_identification import *
@@ -34,7 +38,7 @@ def preprocess(ref_str):
     return new_ref_str_list
 
 
-def get_components(ftype):
+def get_components(ftype, model_type='svm'):
     # resp = requests.post('http://cermine.ceon.pl/parse.do', data={
     #     'reference': "Ansari, U. B., & Sarode, T. (2017). Skin cancer detection using image processing. Int. Res. J. Eng. Technol, 4(4), 2875-2881."})
     # print(resp.content)
@@ -98,9 +102,15 @@ def get_components(ftype):
             # ref_list.append(matches)
             ref_list.append(preprocess(ref))
 
+        if model_type != 'nn':
+            with open(os.path.dirname(os.getcwd()) + '/' + f'component_identification/{model_type}_component_identification.pkl', 'rb') as file:
+                model = pickle.load(file)
+        else:
+            nn_model = component_identification.component_identification.TabularNN(8, 50, 8)
+            nn_model_path = os.path.dirname(os.getcwd()) + '/' + 'component_identification/nn_component_identification.pth'
+            nn_model.load_state_dict(torch.load(nn_model_path))
+            nn_model.eval()  # Set the model to evaluation mode
 
-        with open(os.path.dirname(os.getcwd()) + '/' + 'component_identification/svm_component_identification.pkl', 'rb') as file:
-            model = pickle.load(file)
 
         for ref in ref_list:
             ref_dict = {}
@@ -108,7 +118,15 @@ def get_components(ftype):
             feats = np.array(list(feature_extraction(data, ner=True)))
             # do transpose
             x = list(map(list, zip(*(feats.tolist()))))
-            res = model.predict(x)
+            if model_type != 'nn':
+                res = model.predict(x)
+                print(res)
+            else:
+                output = nn_model(torch.tensor(x).float())
+                res = []
+                for each in output:
+                    res.append(torch.argmax(each).numpy().item())
+
             for i, item in enumerate(ref):
                 if res[i] == 0:
                     ref_dict['authors'] = item
