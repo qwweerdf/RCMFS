@@ -1,21 +1,23 @@
-import pickle
-import re
 import subprocess
-import os
-import sys
 
-import numpy as np
-import pandas as pd
+import fuzzywuzzy.fuzz
 import bibtexparser
-import torch
 
 import component_identification.component_identification
 from online_datasource.online_reference_extractor import *
-import time
 from component_identification.component_identification import *
+
+"""
+main process to do component identification for the uploaded files
+"""
 
 
 def preprocess(ref_str):
+    """
+    preprocess reference string
+    :param ref_str: reference string
+    :return: new reference string list
+    """
     ref_str_list = ref_str.split('\n')
     new_ref_str_list = []
     for i, item in enumerate(ref_str_list):
@@ -38,19 +40,16 @@ def preprocess(ref_str):
     return new_ref_str_list
 
 
-def get_components(ftype, model_type='svm'):
-    # resp = requests.post('http://cermine.ceon.pl/parse.do', data={
-    #     'reference': "Ansari, U. B., & Sarode, T. (2017). Skin cancer detection using image processing. Int. Res. J. Eng. Technol, 4(4), 2875-2881."})
-    # print(resp.content)
-    # data = pd.DataFrame(['November 2022'], columns=['content'])
-    # with open('svm_component_identification.pkl', 'rb') as file:
-    #     model = pickle.load(file)
-    # feats = np.array(list(feature_extraction(data)))
-    # print(feats)
-    # # do transpose
-    # x = list(map(list, zip(*(feats.tolist()))))
-    # print(model.predict(x))
+def get_components(ftype, model_type='svm', ner=True):
+    """
+    get components from model prediction
+    :param ftype: file type
+    :param model_type: model type
+    :param ner: if Flair NER
+    :return: reference dictionary
+    """
 
+    # if BibTeX, parse the file and compare with online datasource
     if ftype == 'bib':
         bib_ref_compare = []
         with open('/Users/jialong/Desktop/ref.bib', 'r') as f:
@@ -89,19 +88,23 @@ def get_components(ftype, model_type='svm'):
     ref_compare = []
     with open(os.path.dirname(os.getcwd()) + '/' + "reference_extraction/extracted_references.txt", "r") as file:
         # Read the contents of the file
+        counter = 0
         for line in file:
 
-            # Execute a command
-            result = subprocess.run(['java', '-cp', '/Users/jialong/Downloads/cermine.jar', 'pl.edu.icm.cermine.bibref.CRFBibReferenceParser', '-reference', line.strip()], capture_output=True, text=True)
+            # Execute the CERMINE, the software is not included in the project because the limitation of uploaded zip size (30MB)
+            # if you need that, please download it here: https://maven.ceon.pl/artifactory/kdd-releases/pl/edu/icm/cermine/cermine-impl/1.13/cermine-impl-1.13-jar-with-dependencies.jar
+            cermine_path = '/Users/jialong/Downloads/cermine.jar'
+            result = subprocess.run(['java', '-cp', cermine_path, 'pl.edu.icm.cermine.bibref.CRFBibReferenceParser', '-reference', line.strip()], capture_output=True, text=True)
 
-            # Print the command output
             ref = result.stdout
             if ref[9:16] == 'Unknown':
                 continue
-            # matches = re.findall(r'{(.*?)}', ref)
-            # ref_list.append(matches)
-            ref_list.append(preprocess(ref))
 
+            counter += 1
+            ref_list.append(preprocess(ref))
+        print(f"extracted reference count: {counter}")
+
+        # load models
         if model_type != 'nn':
             with open(os.path.dirname(os.getcwd()) + '/' + f'component_identification/{model_type}_component_identification.pkl', 'rb') as file:
                 model = pickle.load(file)
@@ -112,10 +115,11 @@ def get_components(ftype, model_type='svm'):
             nn_model.eval()  # Set the model to evaluation mode
 
 
+        # main loop to compare references
         for ref in ref_list:
             ref_dict = {}
             data = pd.DataFrame(ref, columns=['content'])
-            feats = np.array(list(feature_extraction(data, ner=True)))
+            feats = np.array(list(feature_extraction(data, ner=ner)))
             # do transpose
             x = list(map(list, zip(*(feats.tolist()))))
             if model_type != 'nn':
@@ -151,6 +155,12 @@ def get_components(ftype, model_type='svm'):
             except KeyError:
                 continue
             print(online_ref)
+            try:
+                if fuzzywuzzy.fuzz.token_set_ratio(ref_dict['title'], online_ref['title']) <= 67 or fuzzywuzzy.fuzz.token_set_ratio(ref_dict['authors'], online_ref['authors']) <= 50:
+                    print('too away!!')
+                    continue
+            except KeyError:
+                continue
             print()
             if online_ref != "":
                 ref_compare.append(ref_dict)

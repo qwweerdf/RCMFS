@@ -1,6 +1,4 @@
 import pickle
-import sys
-
 import torch
 
 from reference_extraction import ref_ext
@@ -8,10 +6,19 @@ import pandas as pd
 import numpy as np
 from docx import Document
 import os
-import xgboost as xgb
+
+"""
+machine learning based reference extraction for uploaded files
+"""
 
 
 def extract_features(para):
+    """
+    give paragraphs, converts to features
+    :param para: paragraphs
+    :return: list of features
+    """
+
     # form to DataFrame
     data = pd.DataFrame(para, columns=['content'])
     # extract features
@@ -21,6 +28,13 @@ def extract_features(para):
 
 
 def extract_ref(file_path, model_type='svm'):
+    """
+    extract reference main llop
+    :param file_path
+    :param model_type
+    :return: reference list
+    """
+
     if model_type != 'nn':
         with open(os.path.dirname(os.getcwd()) + '/' + f'reference_extraction/{model_type}_reference_extraction.pkl',
                   'rb') as file:
@@ -40,7 +54,7 @@ def extract_ref(file_path, model_type='svm'):
 
     # data cleaning and append document to a list
     for paragraph in document_text:
-        if paragraph == "" or paragraph == '\n' or paragraph == '\t' or '\n' in paragraph or '\t' in paragraph:
+        if paragraph == "" or paragraph == '\n' or paragraph == '\t' or '\n' in paragraph or '\t' in paragraph or paragraph.isspace():
             continue
         paragraphs.append(paragraph)
     paragraphs = np.array(paragraphs)
@@ -71,23 +85,8 @@ def extract_ref(file_path, model_type='svm'):
             file.write(row + '\n')
     for ref in refs:
         print(ref)
+    print(len(refs))
     return refs
-
-    # test = pd.DataFrame([
-    #                         '5.	Xu, X., Xu, A., Jiang, Y., Wang, Z., Wang, Q., Zhang, Y. and Wen, H., 2020, November. Research on Security Issues of Docker and Container Monitoring System in Edge Computing System. In Journal of Physics: Conference Series (Vol. 1673, No. 1, p. 012067). IOP Publishing.']
-    #
-    #                     , columns=['content'])
-    #
-    # print(ref_ext.feature_extraction(test))
-    # print(model.predict([[1, 3, 0, 3, 0, 0, 4, 0]]))
-
-    # chunk_size = 10
-    # for i in range(0, data.shape[0], chunk_size):
-    #     part = data['content'][i:i+chunk_size]
-    #     feat_list = list(ref_ext.feature_extraction(part))
-    #     print(feat_list)
-
-    # ref_ext.feature_extraction()
 
 
 if __name__ == '__main__':

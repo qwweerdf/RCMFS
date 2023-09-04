@@ -4,10 +4,12 @@ import re
 import linecache
 import os
 import pypandoc
-import PyPDF2
 
 from bs4 import BeautifulSoup
 
+"""
+rule based reference extraction algorithms
+"""
 
 REF_LIST = [
     'reference',
@@ -17,6 +19,12 @@ REF_LIST = [
 
 
 def reference_extraction_odt_docx(path):
+    """
+    extract references from docx and dot
+    :param path: path of the documents
+    :return: reference list
+    """
+
     extension = os.path.splitext(path)[1][1:]
     print(extension)
     html = pypandoc.convert_file(path, 'html5')
@@ -65,6 +73,12 @@ def reference_extraction_odt_docx(path):
 
 
 def reference_extraction_tex(path):
+    """
+    extract references from tex file
+    :param path: path of the documents
+    :return: reference list
+    """
+
     is_ref = False
     ref_content = []
 
@@ -98,19 +112,6 @@ def reference_extraction_tex(path):
     return ref_content[1:]
 
 
-# def reference_extraction_pdf(path):
-#     pdf = open(path, 'rb')
-#     pdf_reader = PyPDF2.PdfFileReader(pdf)
-#     references = []
-#     print(pdf_reader.getDocumentInfo())
-#     # for page_num in range(pdf_reader.numPages):
-#     #     page = pdf_reader.getPage(page_num)
-#     #     text = page.
-#     #     print(text)
-#     #     print()
-#     #     print()
-
-
 def reference_writer(reference_list):
     with open('../test/reference_list.txt', 'w') as f:
         for item in reference_list:
@@ -118,6 +119,12 @@ def reference_writer(reference_list):
 
 
 def extract_reference(path=None):
+    """
+    main function to extract files
+    :param path: file path
+    :return: reference list
+    """
+
     if path is None:
         parser = argparse.ArgumentParser()
         parser.add_argument('--path', type=str, help='file path, including the file name')
@@ -130,6 +137,7 @@ def extract_reference(path=None):
 
     file_type = path.split('.')[-1]
 
+    # check file types
     if file_type == 'odt' or file_type == 'docx':
         reference_list = reference_extraction_odt_docx(path)
         reference_writer(reference_list)

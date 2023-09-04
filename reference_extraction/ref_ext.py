@@ -3,28 +3,35 @@ import pickle
 import re
 import numpy as np
 import pandas as pd
-import xgboost as xgb
-import torch.nn.functional as F
 from sklearn.linear_model import Perceptron
 from nltk.tokenize import word_tokenize
 from nltk import pos_tag
 from sklearn import svm
 from torch.utils.data import TensorDataset
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold, KFold, train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, f1_score, balanced_accuracy_score
-from flair.data import Sentence
+from sklearn.model_selection import StratifiedKFold, train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score, average_precision_score, f1_score, balanced_accuracy_score, confusion_matrix, roc_curve, auc
 from torch.utils.data import DataLoader
-from flair.nn import Classifier
-from imblearn.ensemble import BalancedRandomForestClassifier
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import matplotlib.pyplot as plt
+import seaborn as sns
+
+"""
+train reference extraction models
+"""
 
 
 # feature extraction
 def feature_extraction(data):
+    """
+    converts text tabular data to numeric format
+    :param data: text tabular data
+    :return: numeric features
+    """
+
+    # flair NER, deprecated
     # tagger = Classifier.load('ner-fast')
 
     data_list = data.content.values.tolist()
@@ -33,7 +40,7 @@ def feature_extraction(data):
         tokens.append(word_tokenize(each))
 
     # feature 1: the amount of NNP
-    # feature 2: the amount of VB and VBD
+    # feature 2: the amount of verbs
     # feature 3: comma count
     # feature 4: dot count
     # feature 5: digit count
@@ -59,20 +66,6 @@ def feature_extraction(data):
         tags = np.array(tags)
         NNP_count = np.sum(tags[:, 1] == 'NNP')
         feat1.append(NNP_count)
-        # NNP_count = np.sum(tags[:, 1] == 'NNP')
-        # make a sentence
-        # sentence = Sentence(data_list[i])
-        #
-        # # run NER over sentence
-        # tagger.predict(sentence)
-        #
-        # # print the sentence with all annotations
-        # print(sentence.labels)
-        # count = 0
-        # for label in sentence.labels:
-        #     if label.value == 'PER':
-        #         count += 1
-        # feat1.append(count)
 
         VB_count = np.sum(tags[:, 1] == 'VB')
         VBZ_count = np.sum(tags[:, 1] == 'VBZ')
@@ -136,6 +129,12 @@ def feature_extraction(data):
 
 
 def transform(data):
+    """
+    transform text tabular data to x and y
+    :param data: text tabular data
+    :return: features x and label y
+    """
+
     feat1, feat2, feat3, feat4, feat5, feat6, feat7, feat8, feat9, feat10, feat11 = feature_extraction(data)
     data['nnp'] = feat1
     data['vb'] = feat2
@@ -150,7 +149,8 @@ def transform(data):
     data['volume'] = feat11
     data.drop('content', axis=1)
 
-    for feat in ['nnp', 'vb', 'comma', 'dot', 'digit', 'year', 'sent', 'md', 'length']:
+    # get the mean and variance data
+    for feat in ['nnp', 'vb', 'comma', 'dot', 'digit', 'year', 'sent', 'md', 'length', 'page', 'volume']:
         print('{} not reference mean: {}'.format(feat, np.mean(data[feat].loc[data['label'] == 0])))
         print('{} not reference var: {}'.format(feat, np.var(data[feat].loc[data['label'] == 0])))
         print('{} is reference mean: {}'.format(feat, np.mean(data[feat].loc[data['label'] == 1])))
@@ -164,13 +164,21 @@ def transform(data):
 
 
 def train(x, y, model_type='svm'):
+    """
+    main training function for basic machine learning models
+    :param x
+    :param y
+    :param model_type
+    :return: the best model
+    """
+
     accuracies = []
     balanced_accuracy_scores = []
     roc_scores = []
     pr_scores = []
     f1_scores = []
     models = []
-
+    cms = []
     # Define the number of folds
     num_folds = 10
 
@@ -183,13 +191,13 @@ def train(x, y, model_type='svm'):
         X_train, X_test = x[train_index], x[test_index]
         y_train, y_test = y[train_index], y[test_index]
 
-        # Create an SVM model
+        # Create a model
         if model_type == 'svm':
-            model = svm.SVC()
+            model = svm.SVC(probability=True)
         elif model_type == 'perceptron':
             model = Perceptron(max_iter=1000, tol=1e-3)
         elif model_type == 'brf':
-            model = BalancedRandomForestClassifier(n_estimators=100)  # 100 trees in the forest
+            model = RandomForestClassifier(n_estimators=100)  # 100 trees in the forest
         else:
             return "model type is not supported!"
 
@@ -198,6 +206,8 @@ def train(x, y, model_type='svm'):
 
         # Make predictions on the test data
         y_pred = model.predict(X_test)
+
+        cms.append(confusion_matrix(y_test, y_pred))
 
         # Calculate the accuracy of the model for this fold
         accuracy = accuracy_score(y_test, y_pred)
@@ -214,9 +224,27 @@ def train(x, y, model_type='svm'):
 
         f1_score_ = f1_score(y_test, y_pred)
         f1_scores.append(f1_score_)
+        if model_type == 'perceptron':
+            fpr, tpr, thres = roc_curve(y_test, model.decision_function(X_test))
+        else:
+            fpr, tpr, thres = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
 
+        plt.plot(fpr, tpr, alpha=0.3)
+
+        # if model_type == 'perceptron':
+        #     p, r, thres = precision_recall_curve(y_test, model.decision_function(X_test))
+        # else:
+        #     p, r, thres = precision_recall_curve(y_test, model.decision_function(X_test))
+        #
+        # plt.plot(r, p, alpha=0.3)
         models.append(model)
-
+    plt.xlabel('FPR')
+    plt.ylabel('TPR')
+    plt.title('10 Folds ROC Curves')
+    # plt.xlabel('Recall')
+    # plt.ylabel('Precision')
+    # plt.title('10 Folds PR Curves')
+    plt.show()
     # Calculate the average accuracy across all folds
     average_accuracy = sum(accuracies) / num_folds
     print("Average Accuracy:", average_accuracy)
@@ -232,11 +260,20 @@ def train(x, y, model_type='svm'):
 
     average_f1_score = sum(f1_scores) / num_folds
     print("Average f1 score:", average_f1_score)
+
+    avg_cm = np.sum(cms, axis=0) / len(cms)
+
+    sns.heatmap(np.round(avg_cm), annot=True, fmt='g', cmap='Blues')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.show()
+
     best_performance_index = pr_scores.index(max(pr_scores))
 
     return models[best_performance_index]
 
 
+# architecture for the neural network
 class SimpleNN(nn.Module):
     def __init__(self, input_dim, output=1):
         super(SimpleNN, self).__init__()
@@ -252,10 +289,23 @@ class SimpleNN(nn.Module):
 
 
 def train_nn(X, y, params):
+    """
+    train neural network
+    :param X
+    :param y
+    :param params: hyperparameters
+    :return: None
+    """
+
     # hyperparameters
     epochs = params['epochs']
     batch_size = params['batch_size']
     lr = params['lr']
+
+    # Early stopping parameters
+    patience = 10
+    best_val_loss = float('inf')
+    counter = 0
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True)
 
@@ -272,7 +322,6 @@ def train_nn(X, y, params):
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
-    # Assuming X_train is your input tensor and y_train are your binary labels
     input_dim = X_train.shape[1]
     model = SimpleNN(input_dim)
     loss_function = nn.BCELoss()
@@ -313,9 +362,58 @@ def train_nn(X, y, params):
         print(f"Validation Epoch {epoch + 1}/{epochs}, Loss: {current_eval_loss}")
         print(f"Validation Epoch {epoch + 1}/{epochs}, accuracy: {accuracy / len(test_loader)}")
 
+        # Check for early stopping, if 10 continuous increments, then early stop
+        if current_eval_loss < best_val_loss:
+            best_val_loss = current_eval_loss
+            counter = 0
+        else:
+            counter += 1
+            if counter >= patience:
+                print(f"Early stopping triggered! at epoch:{epoch}")
+                break
+
     plt.plot(train_losses, label="train")
     plt.plot(eval_losses, label="eval")
     plt.legend()
+    plt.show()
+
+    # test loop
+    test_accuracies = []
+    test_auc_rocs = []
+    test_auc_prs = []
+    test_f1_scores = []
+    test_cms = []
+    model.eval()
+    for inputs, targets in test_loader:
+        with torch.no_grad():
+            output = model(inputs)
+            # loss = loss_function(output, targets.reshape(-1, 1))
+            y_pred = np.where(output.numpy() < 0.5, 0, 1)
+            test_accuracies.append(accuracy_score(targets, y_pred))
+
+            test_cms.append(confusion_matrix(targets, y_pred))
+
+            probabilities = output.cpu().detach().numpy()
+
+            fpr, tpr, _ = roc_curve(targets, probabilities)
+            test_auc_rocs.append(auc(fpr, tpr))
+
+            pr_score = average_precision_score(targets, probabilities)
+            test_auc_prs.append(pr_score)
+
+            f1_score_ = f1_score(targets, y_pred)
+            test_f1_scores.append(f1_score_)
+
+    print(f'averaged accuracies: {sum(test_accuracies) / len(test_accuracies)}')
+    print(f'averaged roc score: {sum(test_auc_rocs) / len(test_auc_rocs)}')
+    print(f'averaged pr score: {sum(test_auc_prs) / len(test_auc_prs)}')
+    print(f'averaged f1 score: {sum(test_f1_scores) / len(test_f1_scores)}')
+
+    avg_test_cm = np.sum(test_cms, axis=0) / len(test_cms)
+
+    sns.heatmap(np.round(avg_test_cm), annot=True, fmt='g', cmap='Blues')
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
     plt.show()
 
     torch.save(model.state_dict(), f'nn_reference_extraction.pth')
@@ -323,6 +421,12 @@ def train_nn(X, y, params):
 
 
 def execute(model='svm'):
+    """
+    main function to train models
+    :param model: model type
+    :return: None
+    """
+
     # read data
     raw = []
     with open(os.path.dirname(os.getcwd()) + '/' + 'reference_extraction/corpus.txt') as file:
@@ -335,7 +439,7 @@ def execute(model='svm'):
     # data preparation
     data = pd.DataFrame(raw, columns=['content'])
     data['label'] = 1
-    data['label'].iloc[850:] = 0
+    data['label'].iloc[1350:] = 0
 
     # feature extraction and train
     x, y = transform(data)

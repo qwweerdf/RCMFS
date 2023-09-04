@@ -2,8 +2,18 @@ import requests
 import json
 import time
 
+"""
+online query via PubMed and CrossRef
+"""
+
 
 def pubmed(title):
+    """
+    query using pubmed
+    :param title: title to be searched
+    :return: bibliographic metadata dictionary
+    """
+
     # get searched ids
     query_url = r'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term="{}"[Title:~{}]&retmax=3&retmode=json'.format(
         title, len(title.split()))
@@ -58,6 +68,12 @@ def pubmed(title):
 
 
 def crossref(title):
+    """
+    query using crossref
+    :param title: title to be searched
+    :return: bibliographic metadata dictionary
+    """
+
     res = requests.get(
         f'https://api.crossref.org/works?query={title}&rows=1')
 
@@ -122,6 +138,12 @@ def crossref(title):
 
 
 def get_ref(title):
+    """
+    get bibliographic metadata dictionary
+    :param title: title to be searched
+    :return: bibliographic metadata dictionary
+    """
+
     curr_ref = []
     res = pubmed(str(title))
     curr_ref.append((', '.join(res['authors']), 'authors'))
@@ -139,6 +161,7 @@ def get_ref(title):
 
 
 if __name__ == '__main__':
+    # get the component identification training data
     ref_tags = []
     for i in range(201, 601):
         curr_ref = []
