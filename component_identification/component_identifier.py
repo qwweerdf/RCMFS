@@ -2,7 +2,7 @@ import subprocess
 
 import fuzzywuzzy.fuzz
 import bibtexparser
-
+import json
 import component_identification.component_identification
 from online_datasource.online_reference_extractor import *
 from component_identification.component_identification import *
@@ -86,6 +86,8 @@ def get_components(ftype, model_type='svm', ner=True):
     ref_list = []
     ref_dict = {}
     ref_compare = []
+    with open(os.path.dirname(os.getcwd()) + '/config.json', 'r') as f:
+        config = json.load(f)
     with open(os.path.dirname(os.getcwd()) + '/' + "reference_extraction/extracted_references.txt", "r") as file:
         # Read the contents of the file
         counter = 0
@@ -93,7 +95,7 @@ def get_components(ftype, model_type='svm', ner=True):
 
             # Execute the CERMINE, the software is not included in the project because the limitation of uploaded zip size (30MB)
             # if you need that, please download it here: https://maven.ceon.pl/artifactory/kdd-releases/pl/edu/icm/cermine/cermine-impl/1.13/cermine-impl-1.13-jar-with-dependencies.jar
-            cermine_path = '/Users/jialong/Downloads/cermine.jar'
+            cermine_path = config["cermine_path"]
             result = subprocess.run(['java', '-cp', cermine_path, 'pl.edu.icm.cermine.bibref.CRFBibReferenceParser', '-reference', line.strip()], capture_output=True, text=True)
 
             ref = result.stdout

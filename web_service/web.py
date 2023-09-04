@@ -3,9 +3,19 @@ import os
 import reference_extraction.reference_extractor_ml as ref_ext
 import component_identification.component_identifier as comp_ident
 import feedback_grading.grading as g
+import json
 
 app = Flask(__name__, template_folder='templates')
 app.secret_key = 'supersecretkey'
+
+
+# read and get config file items
+with open(os.path.dirname(os.getcwd()) + '/config.json', 'r') as f:
+    config = json.load(f)
+port = config['web']['webserver']['port']
+host = config['web']['webserver']['host']
+debug = config['web']['debug']
+
 
 # Ensure the instance folder exists
 UPLOAD_FOLDER = os.path.join(app.instance_path, 'uploads')
@@ -122,4 +132,4 @@ def delete():
 
 
 if __name__ == '__main__':
-    app.run(port=9999, debug=True)
+    app.run(host=host, port=port, debug=debug)

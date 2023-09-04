@@ -1,0 +1,19 @@
+{
+
+  "cermine_path":"/Users/jialong/Downloads/cermine.jar",
+
+  "web": {
+
+    "debug": true,
+
+    "webserver": {
+
+      "host": "127.0.0.1",
+
+      "port": 9999
+
+    }
+
+  }
+
+}
